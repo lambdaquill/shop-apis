@@ -5,26 +5,20 @@
 ## Overview
 
 <!-- NARRATIVE:overview -->
-`shop-apis` is a lightweight sample e-commerce REST API built with Python and Flask. It provides endpoints for browsing a product catalog and placing orders with automated pricing calculations and inventory tracking. The repository serves both as a minimal API backend and as a sample codebase for testing `doc-agent`, an automated documentation maintainer.
-
-Key capabilities include:
-- **Product Management:** List available products or fetch details for a single item.
-- **Order Processing:** Place orders with stock availability checks, percentage discount applications, and tax calculations.
-- **In-Memory Store:** In-memory state storage for products and order history.
-- **Health Checks:** A `/health` liveness probe endpoint.
+_Pending: the documentation agent will write this section._
 <!-- /NARRATIVE:overview -->
 
 ## At a Glance
 
 <!-- AUTO:glance -->
 - **Files:** 15
-- **Languages:** Python (13 files, 185 lines), Markdown (1 files, 77 lines)
-- **Python modules:** 7 (14 top-level functions)
-- **HTTP/RPC endpoints:** 5
+- **Languages:** Python (13 files, 193 lines), Markdown (1 files, 77 lines)
+- **Python modules:** 7 (15 top-level functions)
+- **HTTP/RPC endpoints:** 6
 - **Data models:** 0
 - **Test files:** 2
 - **Dependencies declared:** 1
-- **Environment variables:** 4
+- **Environment variables:** 5
 - **Third-party Python libraries imported:** `flask`
 <!-- /AUTO:glance -->
 
@@ -40,8 +34,9 @@ flowchart LR
   m_config["config.py"]
   m_db_store["db/store.py"]
   subgraph m_routes_orders["routes/orders.py"]
-    m_routes_orders_e0["POST /orders"]
-    m_routes_orders_e1["GET /orders/{order_id}"]
+    m_routes_orders_e0["POST /checkout"]
+    m_routes_orders_e1["POST /orders"]
+    m_routes_orders_e2["GET /orders/{order_id}"]
   end
   subgraph m_routes_products["routes/products.py"]
     m_routes_products_e0["GET /products"]
@@ -52,6 +47,7 @@ flowchart LR
   client --> m_app_e0
   client --> m_routes_orders_e0
   client --> m_routes_orders_e1
+  client --> m_routes_orders_e2
   client --> m_routes_products_e0
   client --> m_routes_products_e1
   m_app --> m_config
@@ -72,17 +68,7 @@ flowchart LR
 <!-- /AUTO:architecture -->
 
 <!-- NARRATIVE:architecture_notes -->
-The application follows a standard layered architecture for Flask REST services:
-
-- **Application Factory & Routing (`app.py`, `routes/`):** `app.py` exposes `create_app()` to construct the Flask instance and register application blueprints:
-  - `routes/products.py` (`/products`): Endpoint handlers for retrieving product catalogue details.
-  - `routes/orders.py` (`/orders`): Endpoint handlers for submitting and retrieving order details.
-  - `/health`: Direct liveness endpoint registered on the application root.
-- **Service Layer (`services/`):** Encapsulates core business rules separate from HTTP request/response logic:
-  - `services/inventory.py`: Validates item availability against product stock and determines low-stock alerts based on `LOW_STOCK_THRESHOLD`.
-  - `services/pricing.py`: Computes price reductions using percentage discounts and applies tax according to `TAX_RATE`.
-- **Data Persistence (`db/store.py`):** Holds product items (`PRODUCTS`) and order records (`ORDERS`) in memory. Handles atomic stock decrements and auto-increment order IDs.
-- **Configuration (`config.py`):** Loads operational settings from environment variables (`PORT`, `DEBUG`, `TAX_RATE`, `LOW_STOCK_THRESHOLD`) with sensible defaults.
+_Pending: the documentation agent will write this section._
 <!-- /NARRATIVE:architecture_notes -->
 
 ## Request Flows
@@ -199,6 +185,7 @@ shop-apis/
 <!-- AUTO:api -->
 | Method | Path | Handler | Location | Description |
 |---|---|---|---|---|
+| `POST` | `/checkout` | `checkout` | `routes/orders.py:36` | Process a shopping cart checkout, calculate taxes, and save the order state. |
 | `GET` | `/health` | `health` | `app.py:15` | Liveness probe. |
 | `POST` | `/orders` | `create_order` | `routes/orders.py:11` | Create an order: check stock, apply discount and tax, save. |
 | `GET` | `/orders/{order_id}` | `get_order` | `routes/orders.py:28` | Get one order by id. |
@@ -242,6 +229,7 @@ HTTP endpoints for placing and reading orders.
 |---|---|---|
 | `create_order()` | function | Create an order: check stock, apply discount and tax, save. |
 | `get_order(order_id)` | function | Get one order by id. |
+| `checkout()` | function | Process a shopping cart checkout, calculate taxes, and save the order state. |
 
 ### `routes/products.py`
 
@@ -287,85 +275,14 @@ Pricing rules: discounts and tax.
 | `DEBUG` | `'false'` | `config.py` |
 | `LOW_STOCK_THRESHOLD` | `'5'` | `config.py` |
 | `PORT` | `'5000'` | `config.py` |
+| `SHIPPING_PROVIDER` | `'default-carrier'` | `routes/orders.py` |
 | `TAX_RATE` | `'0.18'` | `config.py` |
 <!-- /AUTO:env -->
 
 ## Setup & Usage
 
 <!-- NARRATIVE:setup_usage -->
-### Prerequisites
-
-- Python 3.9 or higher
-- `pip` package manager
-
-### Local Installation
-
-1. Clone the repository and enter the project directory:
-   ```bash
-   git clone <repository-url>
-   cd shop-apis
-   ```
-
-2. Create and activate a virtual environment:
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
-
-3. Install requirements:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-### Running the Application
-
-Start the server using Python:
-```bash
-python app.py
-```
-By default, the API runs at `http://127.0.0.1:5000`.
-
-### Configuration Environment Variables
-
-Configure application parameters using environment variables:
-
-| Variable | Default | Description |
-|---|---|---|
-| `PORT` | `5000` | Port on which the HTTP server listens. |
-| `DEBUG` | `false` | Enable Flask debug mode (`true` or `false`). |
-| `TAX_RATE` | `0.18` | Tax rate applied to orders (e.g., `0.18` = 18%). |
-| `LOW_STOCK_THRESHOLD` | `5` | Threshold quantity for low-stock determinations. |
-
-### Running Tests
-
-Execute the unit test suite with `pytest`:
-```bash
-pytest
-```
-
-### Example Requests
-
-**Get all products:**
-```bash
-curl http://127.0.0.1:5000/products
-```
-
-**Get product details:**
-```bash
-curl http://127.0.0.1:5000/products/1
-```
-
-**Submit an order:**
-```bash
-curl -X POST http://127.0.0.1:5000/orders \
-  -H "Content-Type: application/json" \
-  -d '{"product_id": 2, "quantity": 3, "discount_pct": 10}'
-```
-
-**Retrieve an order:**
-```bash
-curl http://127.0.0.1:5000/orders/1
-```
+_Pending: the documentation agent will write this section._
 <!-- /NARRATIVE:setup_usage -->
 
 ## Tests

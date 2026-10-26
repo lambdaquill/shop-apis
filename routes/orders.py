@@ -38,3 +38,5 @@ def checkout():
     provider = os.getenv("SHIPPING_PROVIDER", "default-carrier")
     order_data = {"status": "processing", "carrier": provider, "tax_rate": 0.08}
     return {"status": "success", "order": order_data}, 200
+
+

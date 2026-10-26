@@ -11,8 +11,8 @@ _Pending: the documentation agent will write this section._
 ## At a Glance
 
 <!-- AUTO:glance -->
-- **Files:** 15
-- **Languages:** Python (13 files, 193 lines), Markdown (1 files, 77 lines)
+- **Files:** 16
+- **Languages:** Python (14 files, 193 lines), Markdown (1 files, 77 lines)
 - **Python modules:** 7 (15 top-level functions)
 - **HTTP/RPC endpoints:** 6
 - **Data models:** 0
@@ -176,7 +176,8 @@ shop-apis/
 ├── README.md  # Project readme
 ├── app.py  # Application factory: builds the Flask app and registers blueprints.
 ├── config.py  # Central configuration, read from environment variables.
-└── requirements.txt  # Python dependencies
+├── requirements.txt  # Python dependencies
+└── testing_automation.py
 ```
 <!-- /AUTO:structure -->
 

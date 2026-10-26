@@ -12,7 +12,7 @@ _Pending: the documentation agent will write this section._
 
 <!-- AUTO:glance -->
 - **Files:** 16
-- **Languages:** Python (14 files, 193 lines), Markdown (1 files, 77 lines)
+- **Languages:** Python (14 files, 195 lines), Markdown (1 files, 77 lines)
 - **Python modules:** 7 (15 top-level functions)
 - **HTTP/RPC endpoints:** 6
 - **Data models:** 0

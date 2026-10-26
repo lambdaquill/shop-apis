@@ -19,8 +19,8 @@ TRANSIENT = ("503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED", "500", "504", "D
 
 def model_list() -> list:
     """Primary model first, then fallbacks (override with DOC_MODEL / DOC_FALLBACK_MODELS)."""
-    names = [os.getenv("DOC_MODEL") or "gemini-3.8-flash"]
-    names += [m.strip() for m in (os.getenv("DOC_FALLBACK_MODELS") or "gemini-3.7-flash").split(",")]
+    names = [os.getenv("DOC_MODEL") or "gemini-flash-latest"]
+    names += [m.strip() for m in (os.getenv("DOC_FALLBACK_MODELS") or "gemini-flash-latest").split(",")]
     out = []
     for m in names:
         if m and m not in out:

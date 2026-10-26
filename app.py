@@ -16,6 +16,7 @@ def create_app() -> Flask:
         """Liveness probe."""
         return jsonify({"status": "ok"})
 
+
     return app
 
 

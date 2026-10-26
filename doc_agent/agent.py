@@ -1,4 +1,6 @@
 import os
+from google.genai import types
+
 
 from google.adk.agents import Agent
 
@@ -63,11 +65,31 @@ Finish with one line: what you changed (or "no changes needed")."""
 
 root_agent = Agent(
     name="doc_agent",
-    model=os.getenv("DOC_MODEL") or "gemini-3.8-flash",
+    model="gemini-4-argon",  # Or your current working model
     description="Writes and maintains the narrative sections and extra sections of repository documentation.",
     instruction=INSTRUCTION,
-    tools=[tools.get_doc_status, tools.get_repo_overview, tools.get_repo_facts, tools.read_doc, tools.get_git_diff,
-           tools.list_repo_files, tools.read_file, tools.read_files, tools.set_narrative, tools.set_section,
-           tools.set_diagram, tools.delete_section, tools.find_stale_references, tools.list_existing_docs,
-           tools.edit_doc_file],
+    tools=[
+        tools.get_doc_status,
+        tools.get_repo_overview,
+        tools.get_repo_facts,
+        tools.read_doc,
+        tools.list_repo_files,
+        tools.read_file,
+        tools.read_files,
+        tools.set_narrative,
+        tools.set_diagram,
+        tools.delete_section,
+        tools.find_stale_references,
+        tools.list_existing_docs,
+        tools.edit_doc_file,
+    ],
+    # 👈 2. Add the retry configuration block right here
+    generate_content_config=types.GenerateContentConfig(
+        http_options=types.HttpOptions(
+            retry_options=types.HttpRetryOptions(
+                initial_delay=2.0,  # Starts with a 2 second delay
+                attempts=5,  # Automatically retries up to 5 times
+            )
+        )
+    ),
 )

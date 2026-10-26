@@ -1,0 +1,227 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+from __future__ import annotations
+
+import logging
+from typing import Optional
+from typing import TYPE_CHECKING
+
+from google.genai import types
+from typing_extensions import override
+
+from ..agents.readonly_context import ReadonlyContext
+from ..utils.model_name_utils import is_gemini_model
+from ..utils.model_name_utils import is_gemini_model_id_check_disabled
+from .base_tool import BaseTool
+from .tool_context import ToolContext
+
+logger = logging.getLogger('google_adk.' + __name__)
+
+if TYPE_CHECKING:
+  from ..models.llm_request import LlmRequest
+  from .discovery_engine_search_tool import DiscoveryEngineSearchTool
+
+
+class VertexAiSearchTool(BaseTool):
+  """A built-in tool using Vertex AI Search.
+
+  Attributes:
+    data_store_id: The Vertex AI search data store resource ID.
+    search_engine_id: The Vertex AI search engine resource ID.
+
+  To dynamically customize the search configuration at runtime (e.g., set
+  filter based on user context), subclass this tool and override the
+  `_build_vertex_ai_search_config` method.
+
+  Example:
+    ```python
+    class DynamicFilterSearchTool(VertexAiSearchTool):
+      def _build_vertex_ai_search_config(
+          self, ctx: ReadonlyContext
+      ) -> types.VertexAISearch:
+        user_id = ctx.state.get('user_id')
+        return types.VertexAISearch(
+            datastore=self.data_store_id,
+            engine=self.search_engine_id,
+            filter=f"user_id = '{user_id}'",
+            max_results=self.max_results,
+        )
+    ```
+  """
+
+  def __init__(
+      self,
+      *,
+      data_store_id: Optional[str] = None,
+      data_store_specs: Optional[
+          list[types.VertexAISearchDataStoreSpec]
+      ] = None,
+      search_engine_id: Optional[str] = None,
+      filter: Optional[str] = None,
+      max_results: Optional[int] = None,
+      bypass_multi_tools_limit: bool = False,
+      name: Optional[str] = None,
+      description: Optional[str] = None,
+  ):
+    """Initializes the Vertex AI Search tool.
+
+    Args:
+      data_store_id: The Vertex AI search data store resource ID in the format
+        of
+        "projects/{project}/locations/{location}/collections/{collection}/dataStores/{dataStore}".
+      data_store_specs: Specifications that define the specific DataStores to be
+        searched. It should only be set if engine is used.
+      search_engine_id: The Vertex AI search engine resource ID in the format of
+        "projects/{project}/locations/{location}/collections/{collection}/engines/{engine}".
+      filter: The filter to apply to the search results.
+      max_results: The maximum number of results to return.
+      bypass_multi_tools_limit: Whether to bypass the multi tools limitation,
+        so that the tool can be used with other tools in the same agent.
+      name: Optional name for the tool. Defaults to "vertex_ai_search", or
+        "discovery_engine_search" when substituted with
+        DiscoveryEngineSearchTool via bypass_multi_tools_limit=True. When the
+        tool is not substituted with DiscoveryEngineSearchTool, this only labels
+        the BaseTool instance and is not sent to the model or exposed as a
+        declaration.
+      description: Optional description for the tool. Defaults to
+        "vertex_ai_search", or the DiscoveryEngineSearchTool function docstring
+        when substituted with DiscoveryEngineSearchTool via
+        bypass_multi_tools_limit=True. When the tool is not substituted with
+        DiscoveryEngineSearchTool, this only labels the BaseTool instance and is
+        not sent to the model or exposed as a declaration.
+
+    Raises:
+      ValueError: If both data_store_id and search_engine_id are not specified
+      or both are specified.
+    """
+    super().__init__(
+        name=name or 'vertex_ai_search',
+        description=description or 'vertex_ai_search',
+    )
+    self._custom_name = name
+    self._custom_description = description
+    if (data_store_id is None and search_engine_id is None) or (
+        data_store_id is not None and search_engine_id is not None
+    ):
+      raise ValueError(
+          'Either data_store_id or search_engine_id must be specified.'
+      )
+    if data_store_specs is not None and search_engine_id is None:
+      raise ValueError(
+          'search_engine_id must be specified if data_store_specs is specified.'
+      )
+    self.data_store_id = data_store_id
+    self.data_store_specs = data_store_specs
+    self.search_engine_id = search_engine_id
+    self.filter = filter
+    self.max_results = max_results
+    self.bypass_multi_tools_limit = bypass_multi_tools_limit
+
+  def _to_discovery_engine_search_tool(self) -> DiscoveryEngineSearchTool:
+    try:
+      from .discovery_engine_search_tool import DiscoveryEngineSearchTool
+    except ImportError as e:
+      raise ImportError(
+          'VertexAiSearchTool with bypass_multi_tools_limit=True requires'
+          ' the google-cloud-discoveryengine package. Install it with'
+          ' `pip install google-adk[gcp]`.'
+      ) from e
+    return DiscoveryEngineSearchTool(
+        data_store_id=self.data_store_id,
+        data_store_specs=self.data_store_specs,
+        search_engine_id=self.search_engine_id,
+        filter=self.filter,
+        max_results=self.max_results,
+        name=self._custom_name,
+        description=self._custom_description,
+    )
+
+  def _build_vertex_ai_search_config(
+      self, readonly_context: ReadonlyContext
+  ) -> types.VertexAISearch:
+    """Builds the VertexAISearch configuration.
+
+    Override this method in a subclass to dynamically customize the search
+    configuration based on the context (e.g., set filter based on session
+    state).
+
+    Args:
+      readonly_context: The readonly context with access to state and session
+        info.
+
+    Returns:
+      The VertexAISearch configuration to use for this request.
+    """
+    return types.VertexAISearch(
+        datastore=self.data_store_id,
+        data_store_specs=self.data_store_specs,
+        engine=self.search_engine_id,
+        filter=self.filter,
+        max_results=self.max_results,
+    )
+
+  @override
+  async def process_llm_request(
+      self,
+      *,
+      tool_context: ToolContext,
+      llm_request: LlmRequest,
+  ) -> None:
+    model_check_disabled = is_gemini_model_id_check_disabled()
+    llm_request.config = llm_request.config or types.GenerateContentConfig()
+    llm_request.config.tools = llm_request.config.tools or []
+
+    if is_gemini_model(llm_request.model) or model_check_disabled:
+      # Build the search config (can be overridden by subclasses)
+      vertex_ai_search_config = self._build_vertex_ai_search_config(
+          tool_context
+      )
+
+      # Format data_store_specs concisely for logging
+      if vertex_ai_search_config.data_store_specs:
+        spec_ids = [
+            spec.data_store.split('/')[-1] if spec.data_store else 'unnamed'
+            for spec in vertex_ai_search_config.data_store_specs
+        ]
+        specs_info = (
+            f'{len(vertex_ai_search_config.data_store_specs)} spec(s):'
+            f' [{", ".join(spec_ids)}]'
+        )
+      else:
+        specs_info = None
+
+      logger.debug(
+          'Adding Vertex AI Search tool config to LLM request: '
+          'datastore=%s, engine=%s, filter=%s, max_results=%s, '
+          'data_store_specs=%s',
+          vertex_ai_search_config.datastore,
+          vertex_ai_search_config.engine,
+          vertex_ai_search_config.filter,
+          vertex_ai_search_config.max_results,
+          specs_info,
+      )
+
+      llm_request.config.tools.append(
+          types.Tool(
+              retrieval=types.Retrieval(
+                  vertex_ai_search=vertex_ai_search_config
+              )
+          )
+      )
+    else:
+      raise ValueError(
+          'Vertex AI search tool is not supported for model'
+          f' {llm_request.model}'
+      )

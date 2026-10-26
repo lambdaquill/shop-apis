@@ -1,0 +1,43 @@
+name: Auto Update Documentation
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-document:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        if [ -f requirements-docs.txt ]; then pip install -r requirements-docs.txt; fi
+
+    - name: Run Documentation Agent
+      env:
+        GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        GEMINI_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        DOC_MODEL: "gemini-3.6-flash"
+      run: |
+        python run_agent.py
+
+    - name: Commit and Push Documentation Updates
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "41898282+github-actions[bot]@://github.com"
+        git add docs/DOCUMENTATION.md
+        git diff --quiet && git diff --staged --quiet || (git commit -m "docs: auto-update repository documentation specs [skip ci]" && git push)
